@@ -1,0 +1,407 @@
+﻿/// 
+//
+// 05/29/15 TP  - Images added.
+//
+
+//***********************************************************************************
+
+var imagesControllers = angular.module('imagesControllers', []);
+
+
+
+//***********************************************************************************
+//this function will check for Query String values and assign to hidden fields - passed from Dlr Services.
+
+$(document).ready(function () {
+
+    var query = window.location.search.substring(1);
+    var vars = query.split('&');
+    var target;
+
+    localStorage.hiddenUpload = "";
+
+    for (var i = 0; i < vars.length; i++) {
+
+        var pair = vars[i].split('=');
+        
+        if (decodeURIComponent(pair[0]).toLowerCase() == "clnu" || decodeURIComponent(pair[0]).toLowerCase() == "c") {
+            $("#hiddenClaimNo").val(decodeURIComponent(pair[1]));
+            localStorage.hiddenClaimNo = decodeURIComponent(pair[1])
+        }
+
+        if (decodeURIComponent(pair[0]).toLowerCase() == "t" || decodeURIComponent(pair[0]).toLowerCase() == "target") {
+            $("#hiddenTarget").val(decodeURIComponent(pair[1]));
+            localStorage.hiddenTarget = decodeURIComponent(pair[1]);
+            target = decodeURIComponent(pair[1]);
+        }
+
+        if (decodeURIComponent(pair[0]).toLowerCase() == "warn" || decodeURIComponent(pair[0]).toLowerCase() == "w") {
+            $("#hiddenWnWarn").val(decodeURIComponent(pair[1]));
+            localStorage.hiddenWnWarn = decodeURIComponent(pair[1]);
+        }
+        
+        if (decodeURIComponent(pair[0]).toLowerCase() == "cmit") {
+            $("#hiddenWnCmit").val(decodeURIComponent(pair[1]));
+            localStorage.hiddenWnCmit = decodeURIComponent(pair[1]);
+        }
+
+        if (decodeURIComponent(pair[0]).toLowerCase() == "u") {
+            $("#hiddenUpload").val(decodeURIComponent(pair[1]));
+            localStorage.hiddenUpload = decodeURIComponent(pair[1]);
+        }
+
+        if (decodeURIComponent(pair[0]).toLowerCase() == "id" || decodeURIComponent(pair[0]).toLowerCase() == "i") {
+            $("#hiddenCpbId").val(decodeURIComponent(pair[1]));
+            localStorage.hiddenCpbId = decodeURIComponent(pair[1]);
+        }
+    }
+
+    if (target == "TWS" ) {
+        document.getElementById("company").innerHTML = "Total Warranty Services";
+        if (target == "TWS") {
+            $("#hiddenTarget").val("TWS");
+            localStorage.hiddenTarget = "TWS";
+        } else {
+            $("#hiddenTarget").val("TWSDEV");
+            localStorage.hiddenTarget = "TWSDEV";
+        }
+
+    }
+    else if (target == "DEV") {
+        document.getElementById("target").innerHTML = target;
+    }
+    else if (target == "FMM") {
+        document.getElementById("company").innerHTML = "Total Warranty Services";
+        document.getElementById("target").innerHTML = "";
+        localStorage.hiddenTarget = "";
+        $("#hiddenTarget").val("");
+    }
+
+    if (isValidHiddenText($("#hiddenUserId").val(), localStorage.hiddenUserId) == undefined) {
+        $("#hiddenUserId").val("i");
+        localStorage.hiddenUserId = "i";
+    }
+    
+});
+
+images = [];
+
+imagesControllers.controller('imagesCtrl', function ($scope) {
+
+    $scope.uploadPictures = function () {
+        
+        $scope.loading = true;
+        //$scope.$apply();
+            
+        for (var i = 0; i < images.length + 1 ; i++) {
+            var wnWarn = isValidHiddenText($("#hiddenWnWarn").val(), localStorage.hiddenWnWarn);
+
+            var target = isValidHiddenText($("#hiddenTarget").val(), localStorage.hiddenTarget);
+
+            var clno = isValidHiddenText($("#hiddenClaimNo").val(), localStorage.hiddenClaimNo);
+
+            var cpbId = isValidHiddenText($("#hiddenCpbId").val(), localStorage.hiddenCpbId);
+
+            var isApple = false;
+            var pic = [];
+
+            var isMobile = {
+                Android: function () {
+                    return navigator.userAgent.match(/Android/i);
+                },
+                BlackBerry: function () {
+                    return navigator.userAgent.match(/BlackBerry/i);
+                },
+                iOS: function () {
+                    if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+                        isApple = true;
+                        return true;
+                    };
+                },
+                Opera: function () {
+                    return navigator.userAgent.match(/Opera Mini/i);
+                },
+                Windows: function () {
+                    return navigator.userAgent.match(/IEMobile/i);
+                },
+                any: function () {
+                    return (isMobile.Android() || isMobile.BlackBerry() || isMobile.iOS() || isMobile.Opera() || isMobile.Windows());
+                }
+            };
+
+            if (isMobile.iOS()) {
+                isApple = true;
+            }
+
+            //   if (isApple) {
+           // for (var i = 0; i < images.length + 1 ; i++) {
+                var img = document.getElementById("img" + (i));
+                if (img != undefined) {
+                    pic.push(img.src);
+                }
+           // }
+            //  }
+            //else {
+
+            //    pic = images;
+            //  }
+
+                if (pic.length > 0) {
+
+                    $scope.uploadModel[0].target = target;
+                    $scope.uploadModel[0].cpbIdCol = cpbId;
+                    $scope.uploadModel[0].imagesUpload = pic;
+
+                    $.ajax({
+                        contentType: 'application/json; charset=utf-8',
+                        dataType: 'json',
+                        type: 'POST',
+                        url: $scope.UrlClaim + '/Submit',
+                        data: angular.toJson($scope.uploadModel),
+                        success: function (returnData) {
+
+                            if (returnData == null) {
+                                $scope.showUpload = false;
+                            }
+                            else {
+                                pic = [];
+                                for (var i = 0; i < images.length ; i++) {
+                                    pic.push(images[i]);
+                                }
+                                $scope.uploadModel[0].imagesUpload = pic;
+                                $.ajax({
+                                    contentType: 'application/json; charset=utf-8',
+                                    dataType: 'json',
+                                    type: 'POST',
+                                    url: $scope.UrlClaim + '/Submit',
+                                    data: angular.toJson($scope.uploadModel),
+                                    success: function (returnData) {
+                                        if (returnData == null) {
+                                            $scope.showUpload = false;
+                                        }
+                                        else {
+                                            alert(returnData.imageError);
+                                        }
+
+                                        $scope.loading = false;
+                                        $scope.$apply();
+                                    }
+                                });
+
+                            }
+
+                            $scope.loading = false;
+                            $scope.$apply();
+                        
+                        },
+                        error: function () {
+                            pic = [];
+                            for (var i = 0; i < images.length ; i++) {
+                                pic.push(images[i]);
+                            }
+                            $scope.uploadModel[0].imagesUpload = pic;
+                            $.ajax({
+                                contentType: 'application/json; charset=utf-8',
+                                dataType: 'json',
+                                type: 'POST',
+                                url: $scope.UrlClaim + '/Submit',
+                                data: angular.toJson($scope.uploadModel),
+                                success: function (returnData) {
+                                    if (returnData == null) {
+                                        $scope.showUpload = false;
+                                    }
+                                    else {
+                                        alert(returnData.imageError);
+                                    }
+
+                                    $scope.loading = false;
+                                    $scope.$apply();
+                                }
+                           });
+                            }
+
+                    });
+                }
+        }
+    };
+
+    $scope.init = function () {
+
+        if (window.location.hostname == "localhost") {
+            $scope.UrlClaim = 'http://localhost:64484/api/ClaimEngine';
+        } else {
+            $scope.UrlClaim = '/uswapi/api/ClaimEngine';
+        }
+
+        var upLoad = isValidHiddenText($("#hiddenUpload").val(), localStorage.hiddenUpload);
+
+        if (upLoad == undefined || upLoad == "") {
+            $scope.getImages();
+        }
+        else {
+            $scope.getUploadModel();
+        }
+
+    }
+
+    $scope.getUploadModel = function () {
+
+        var wnWarn = isValidHiddenText($("#hiddenWnWarn").val(), localStorage.hiddenWnWarn);
+        var clno = isValidHiddenText($("#hiddenClaimNo").val(), localStorage.hiddenClaimNo);
+        var target = isValidHiddenText($("#hiddenTarget").val(), localStorage.hiddenTarget);
+        var cpbID = isValidHiddenText($("#hiddenCpbId").val(), localStorage.hiddenCpbId);
+
+
+        var dataToSend = {target: target, cpbId : cpbID};
+
+        $.get($scope.UrlClaim + "/GetUploadModel", dataToSend, function (returnData) {
+            $scope.uploadModel = returnData;
+            $scope.warranty = "Warranty: " + returnData[0].PmWarn;
+            $("#hiddenWnWarn").val(returnData[0].PmWarn);
+            localStorage.hiddenWnWarn = returnData[0].PmWarn;
+            $scope.showText = true;
+            $scope.showPictures = false;
+            $scope.showUpload = true;
+
+            $scope.$apply();
+        });
+    }
+
+    $scope.getImages = function () {
+
+        $scope.loading = true;
+        $scope.$apply();
+
+        var wnWarn = isValidHiddenText($("#hiddenWnWarn").val(), localStorage.hiddenWnWarn);
+            //$("#hiddenWnWarn").val();
+        var target = isValidHiddenText($("#hiddenTarget").val() ,localStorage.hiddenTarget);
+            //$("#hiddenTarget").val();
+        var clno = isValidHiddenText($("#hiddenClaimNo").val() ,localStorage.hiddenClaimNo);
+            //$("#hiddenClaimNo").val();
+        var wnCmit = isValidHiddenText($("#hiddenWnCmit").val() ,localStorage.hiddenWnCmit);
+            //$("#hiddenWnCmit").val();
+
+        var dataToSend = { target: target, warn: wnWarn, claimNo: clno , cmit : wnCmit};
+
+        $.get($scope.UrlClaim + "/GetImages", dataToSend, function (returnData) {
+
+            for (var i = 0 ; i < returnData.length; i++) {
+                
+                var image = returnData[i];
+                //var img = document.createElement("img");
+                //img.id = "img" + i;
+                //img.src = image.Base64
+                //img.height = 600;
+                //img.width = 1000;
+                //img.onclick = "SwapImage(img)";
+                //document.body.appendChild(img);
+                if (i == 0) {
+                    $("#mainImg").attr("src", image.Base64);
+                    $scope.warranty = "Warranty: " + wnWarn;
+                    $scope.claimNo = "Claim Number: " + clno;
+                }
+
+                var span = document.createElement('span');
+                span.innerHTML = ['<img class="thumb" id="img"'+i+' src="', image.Base64,
+                                  '" title="', escape(""), '"onClick="SwapImage(this)"/>'].join('');
+                document.getElementById('list').insertBefore(span, null);
+
+
+                $scope.showPictures = true;
+                $scope.showText = true;
+                $scope.$apply();
+            }
+
+            $scope.loading = false;
+            $scope.showUpload = false;
+            $scope.$apply();
+        });
+
+    }
+});
+
+
+
+function SwapImage(obj) {
+  
+    $("#mainImg").attr("src", obj.src);
+
+}
+
+
+function isValidHiddenText(hiddenText, localText) {
+
+    if ((hiddenText == undefined || hiddenText == "") && localText != undefined) {
+        return localText;
+    }
+    else {
+        return hiddenText;
+    }
+}
+
+function removePictures() {
+
+    images = [];
+    document.getElementById("listUpload").innerHTML = "";
+    document.getElementById('btnImages').style.visibility = "hidden";
+
+}
+
+function handleFileSelectUpload(photoArr) {
+
+    if (images.length == 4) {
+
+        alert("Maximum number of pictures reached.");
+    }
+    else {
+        var files = photoArr; // FileList object
+        var tes = document.getElementById('list');
+        // Loop through the FileList and render image files as thumbnails.
+
+
+        for (var i = 0, f; f = files[i];  i++) {
+            
+            // Only process image files.
+            if (!f.type.match('image.*')) {
+                continue;
+            }
+
+            var reader = new FileReader();
+            ''
+            // Closure to capture the file information.
+            reader.onload = (function (theFile) {
+                return function (e) {
+                    // Render thumbnail.
+                    //var span = document.createElement('span');
+                    //span.innerHTML = ['<img class="thumb" src="', e.target.result,
+                    //                  '" title="', escape(theFile.name), '"/>'].join('');
+                    //document.getElementById('list').insertBefore(span, null);
+
+                    var image = document.createElement('img');
+                    image.src = e.target.result;
+
+                    var canvas = document.createElement('canvas');
+                    canvas.height = 600;
+                    canvas.width = 600;
+                    var ctx = canvas.getContext('2d');
+
+                    ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, canvas.width, canvas.height);
+
+                    var shrinked = canvas.toDataURL();
+
+                    images.push(shrinked);
+                    var span = document.createElement('span');
+                    span.innerHTML = ['<img class="thumb" id="img' + images.length + '" src="', e.target.result,
+                                      '" title="', escape(theFile.name), '"/>'].join('');
+                    document.getElementById('listUpload').insertBefore(span, null);
+                    document.getElementById('btnImages').style.visibility = "visible";
+                };
+            })(f);
+
+            // Read in the image file as a data URL.
+            reader.readAsDataURL(f);
+        }
+    }
+    //$("#btnUploadPictures").click();
+    
+}

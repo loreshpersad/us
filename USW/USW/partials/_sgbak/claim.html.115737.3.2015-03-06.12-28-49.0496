@@ -1,0 +1,76 @@
+﻿
+
+<link href="Content/bootstrap.min.css" rel="stylesheet" />
+<div ng-controller="claimCtrl">
+    <div class="row">
+        <div class="col-md-4">
+            <form>
+                <div class="form-group">
+                    <h4>Claim Form</h4>
+                    <button onclick="window.history.back()">Go Back</button>
+                    <h4 id="carInfo" ng-init="setCar()"></h4> 
+                    <label class="text-danger">{{error}}</label> <br />
+                    <label for="inputMileage">Mileage</label>
+                    <input type="number" class="form-control" id="inputMileage" placeholder="Enter Mileage" ng-blur="claimValidateMileage()" required="required" ng-pattern="^0-9.">
+                </div>
+                <div class="form-group">
+                    <label for="inputRo">Ro #</label>
+                    <input type="text" class="form-control" id="inputRo" placeholder="Enter Ro #" required="required">
+                </div>
+                <div class="form-group">
+                    <label for="inputRoTotal">Ro Total</label>
+                    <input class="form-control" id="inputRoTotal" placeholder="Enter Ro Total eg.(00.00)" required="required" ng-pattern="^0-9.">
+</div>
+                <img src="Content/Loading/ajax-loader.gif" ng-show="loading" />
+                <button type="submit" ng-click="maintClaimSubmit($event)" ng-disabled="!selectedPartsShow">Submit Claim and get PO#</button>
+            </form>
+
+        </div>
+    </div>
+    <br /><label class="text-danger" ng-show="selectErrorShow">{{selectError}}</label> 
+    <span ng-show="contactLink">
+        <span class="text-danger" style="font-weight:bold">If you have a question regarding the amount authorized for a specific item, Please </span>
+        <a ng-click="openTextArea($event)">Click here</a>
+        <span class="text-danger" style="font-weight:bold"> and a representative will investigate the part price for you.</span>
+        <span>There is no need to submit an invoice if the requested amount matches the authorized amount.</span>
+    </span>
+    <div>
+        <button type="submit" ng-click="searchAnotherWarranty()" ng-show="entered">Enter Another Claim</button>
+    </div>
+    <div class="container table table-bordered">
+        <p ng-show="availablePartsShow">Available: </p>
+        <ul id="ulParts">
+            <li ng-repeat="part in enabledParts">
+                <input type="checkbox" ng-click="enabledClick(part)">
+                <span>{{part.part_desc}}</span>
+                <select id="selectQ">
+                    <option value="1" selected="selected">1</option>
+                    <option value="2">2</option>
+                </select>
+                <hr />
+            </li>
+        </ul>
+        <p ng-show="selectedPartsShow">Selected:</p>
+        <ul>
+            <li ng-repeat="part in selectedParts">
+                <input type="checkbox" checked="checked" ng-click="selectedClick(part)">
+                <span style="color:GrayText">{{part.part_desc}}</span>
+                <hr />
+            </li>
+        </ul>
+        <p ng-show="ineligiblePartsShow">Ineligible:</p>
+        <ul>
+            <li ng-repeat="part in disabledParts">
+                <input type="checkbox" disabled="disabled">
+                <span style="color:GrayText">{{part.part_desc}}</span>
+                <hr />
+            </li>
+        </ul>
+    </div>
+    <div ng-show="showTextArea" id="divText">
+        <p>Please fill in your concern and click Send.</p>
+        <textarea class="form-control" rows="3" id="textArea"></textarea>
+        <button type="submit" ng-click="mailTo($event)">Send</button>
+    </div>
+    <input type="hidden" ng-model="CbWarn" />
+</div>

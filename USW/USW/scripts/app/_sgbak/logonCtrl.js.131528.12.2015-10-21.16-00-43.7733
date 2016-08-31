@@ -1,0 +1,244 @@
+﻿/// 
+//
+// 02/12/15 TP  - Solution Created.
+//
+
+//***********************************************************************************
+try{
+    var logonControllers = angular.module('logonControllers', []);
+} catch (e) {
+    alert("An error has occurred, most likely, you are using compatibility view. Please follow these steps to resolve. "+
+        "\nGo to “Tools” \nClick on “Compatibility View Settings”. \nPlease remove, uswarranty.com from the websites added to compatibility view. \nClick close." +
+        "\nOur site works best with Google Chrome." +
+        "\nIf you are still having issues, please contact eganpath@uswarranty.com " +
+        "Or call Emerald at 954 784-9400 Ext: 236");
+}
+
+try{
+    localStorage.test = "test";
+}
+catch (e) {
+    alert("An error has occurred, if you are on a phone, please make sure Private browsing is turned Off.");
+}
+var URL = "";
+
+if (window.location.hostname =="localhost") {
+    URL = 'http://localhost:64484//api/Logon';
+} else {
+    URL = '/uswapi/api/Logon';
+}
+
+//***********************************************************************************
+//this function will check for a TARGET and set hidden elements and set company if TWS
+
+$(document).ready(function () {
+    var target;
+    var query = window.location.search.substring(1);
+    var vars = query.split('&');
+    for (var i = 0; i < vars.length; i++) {
+        var pair = vars[i].split('=');
+        if (decodeURIComponent(pair[0]).toLowerCase() == "target") {
+            $("#hiddenTarget").val(decodeURIComponent(pair[1]));
+            localStorage.hiddenTarget = decodeURIComponent(pair[1])
+            target = decodeURIComponent(pair[1])
+                //$("#hiddenTarget").val();
+        }
+    }
+
+    if (target == "TWS" ) {
+        document.getElementById("company").innerHTML = "Total Warranty Services";
+        if (target == "TWS") {
+            $("#hiddenTarget").val("TWS");
+            localStorage.hiddenTarget = "TWS";
+        } else {
+            $("#hiddenTarget").val("TWSDEV");
+            localStorage.hiddenTarget = "TWSDEV";
+        }
+    }
+    else if (target == "DEV"){
+        document.getElementById("target").innerHTML = target;
+        localStorage.hiddenTarget = "DEV"
+        $("#hiddenTarget").val("DEV");
+    }
+    else if (target == "TWSDEV") {
+        document.getElementById("company").innerHTML = "Total Warranty Services";
+        $("#hiddenTarget").val("TWSDEV");
+        document.getElementById("target").innerHTML = target;
+    }
+    else if (target == "FMM") {
+        document.getElementById("company").innerHTML = "Total Warranty Services";
+        document.getElementById("target").innerHTML = "";
+        localStorage.hiddenTarget = "";
+        $("#hiddenTarget").val("");
+    }
+    else {
+        document.getElementById("target").innerHTML = "";
+        localStorage.hiddenTarget = "";
+        $("#hiddenTarget").val("");
+    }
+
+});
+
+
+//***********************************************************************************
+
+logonControllers.controller('logonCtrl', function ($scope, $http) {
+
+    //***********************************************************************************
+
+    $scope.validate = function () {
+        
+        $scope.loading = true;
+        $scope.error = "";
+        var user = $("#inputUserId").val();
+        var pass = $("#inputPassword").val();
+        var target = isValidHiddenText($("#hiddenTarget").val(), localStorage.hiddenTarget);
+            //$("#hiddenTarget").val();
+
+        if (user != "" && pass != "") {
+
+            localStorage.hiddenUserId = user;
+            $("#hiddenUserId").val(user);
+
+            var dataToSend = { User: user, Pass: pass, Target : target }
+
+            $.get(URL + '/Validate', dataToSend, function (returnData) {
+
+                if (returnData == null) {
+                    $scope.error = "An error has occurred and an administrator has been notified, Please try again.";
+                    $scope.loading = false;
+                    $scope.$apply();
+                }
+               else if (returnData.length == 0) {
+                    $scope.error = "Invalid Username or Password";
+                    $scope.loading = false;
+                    $scope.$apply();
+                }
+                else if (returnData[0].DlName == "e") {
+                    $scope.DropDown = false;
+                    $scope.DlcdText = true;
+                    $scope.ButtonLogin = true;
+                    $scope.logon = false;
+                } else {
+                    $scope.DropDown = true;
+                    $scope.DlcdText = false;
+                    $scope.ButtonLogin = true;
+                    $scope.options = returnData;
+                    $scope.SelectedDealer = $scope.options[0];
+                    $scope.logon = false;
+                }
+
+                $scope.loading = false;
+                $scope.$apply()
+            });
+        }else{
+            $scope.loading = false;
+            $scope.$apply()
+        }
+    }
+
+    //***********************************************************************************
+
+    $scope.login = function () {
+
+        if ($scope.SelectedDealer == undefined) {
+            $scope.loading = true;
+            var dealerCode = $("#inputDlcdText").val();
+            var target = isValidHiddenText($("#hiddenTarget").val(), localStorage.hiddenTarget);
+                //$("#hiddenTarget").val();
+
+            var number = isNaN(dealerCode);
+            if (number || dealerCode == "") {
+                $scope.error = "Invalid Dealer code";
+                $scope.loading = false;
+                $scope.$apply();
+                return;
+            }
+
+            var dataToSend = { dlcd: dealerCode, Target: target};
+
+            $.get(URL + '/LoginDetails', dataToSend , function (returnData) {
+                
+                if (returnData == null) {
+                    $scope.error = "An error has occurred and an administrator has been notified, Please try again.";
+                    $scope.loading = false;
+                    $scope.$apply();
+                }
+               else if (returnData.Dlcd == "") {
+                    $scope.error = "Invalid Dealer code";
+                    $scope.loading = false;
+                    $scope.$apply();
+               } else {
+                   localStorage.hiddenLoggedOnDlcd = returnData.Dlcd;
+                    $("#hiddenLoggedOnDlcd").val(returnData.Dlcd);
+
+                   localStorage.hiddenLoggedOnCmit = returnData.DlCmit;
+                    $("#hiddenLoggedOnCmit").val(returnData.DlCmit);
+
+                   localStorage.hiddenCompany = returnData.DlCompanyName;
+                   $("#hiddenCompany").val(returnData.DlCompanyName);
+
+                   localStorage.hiddenDlName = returnData.DlName;
+                   $("#hiddenDlName").val(returnData.DlName);
+
+                    document.getElementById("company").innerHTML = returnData.DlCompanyName;
+                    document.getElementById("dealer").innerHTML = returnData.DlName;
+
+                   // $scope.changeRoute('#/MaintClaimSearch');
+                    $scope.changeRoute('#/UserRoute');
+                }
+            });
+        } else {
+            $scope.loading = true;
+
+            localStorage.hiddenLoggedOnDlcd = $scope.SelectedDealer.Dlcd;
+            $("#hiddenLoggedOnDlcd").val($scope.SelectedDealer.Dlcd);
+
+            localStorage.hiddenLoggedOnCmit = $scope.SelectedDealer.DlCmit;
+             $("#hiddenLoggedOnCmit").val($scope.SelectedDealer.DlCmit);
+
+            localStorage.hiddenCompany = $scope.SelectedDealer.DlCompanyName;
+            $("#hiddenCompany").val($scope.SelectedDealer.DlCompanyName);
+
+            localStorage.hiddenDlName = $scope.SelectedDealer.DlName;
+            $("#hiddenDlName").val($scope.SelectedDealer.DlName);
+
+            document.getElementById("company").innerHTML = $scope.SelectedDealer.DlCompanyName;
+            document.getElementById("dealer").innerHTML = $scope.SelectedDealer.DlName;
+            $scope.changeRoute('#/MaintClaimSearch');
+            $scope.changeRoute('#/UserRoute');
+        }
+        
+          
+        
+    }
+
+    //***********************************************************************************
+
+    $scope.changeRoute = function (url, forceReload) {
+        $scope = $scope || angular.element(document).scope();
+        if (forceReload || $scope.$$phase) { // that's right TWO dollar signs: $$phase
+            window.location = url;
+        } else {
+            window.location = url;
+            $scope.$apply();
+            $scope.loading = false;
+        }
+    };
+
+    //***********************************************************************************
+
+});
+
+
+
+
+function isValidHiddenText(hiddenText, localText) {
+
+    if ((hiddenText == undefined || hiddenText == "") && localText != undefined) {
+        return localText;
+    }
+    else {
+        return hiddenText;
+    }
+}

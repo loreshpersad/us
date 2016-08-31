@@ -1,0 +1,201 @@
+﻿var maintClaimControllers = angular.module('maintClaimControllers', []);
+
+var UrlMaintClaim = 'http://localhost:64484/api/MaintClaim';
+//var UrlMaintClaim = 'http://www5.uswarranty.com/uswapi/api/MaintClaim';
+
+maintClaimControllers.controller('maintClaimCtrl', function ($scope, $http) {
+
+    //$http.get('http://localhost:57922/api/MaintClaim').success(function (returnData) {
+    //    //  $scope.phones = returnData;
+    //    var tes = returnData;
+    //});
+
+    // validate mileage
+    $scope.selectedParts = [];
+    $scope.maintClaimValidateMileage = function () {
+
+        $scope.loading = true;
+        var mileage = $("#inputMileage").val();
+
+        if (mileage == "") {
+            $("#inputMileage").val('');
+            $scope.error = "Mileage required";
+            $scope.parts = "";
+            $scope.loading = false;
+            $scope.$apply();
+        }
+        else {
+            $scope.error = "";
+            $scope.enabledParts = "";
+            $scope.disabledParts = "";
+
+            var warn = $("#hiddenWnWarn").val();
+            var cmit = $("#hiddenWnCmit").val();
+
+            var MileageDataToSend = { PmCmit: cmit, PmWarn: warn, PmPmil: mileage };
+
+            //validate mileage before we get parts.
+            $.get(UrlMaintClaim + "/MaintClaimMileageEdit", MileageDataToSend, function (EditReturnData) {
+
+                if (EditReturnData == "") {
+
+                    $scope.error = "";
+                    //Get parts
+                    var dlcd = $("#hiddenLoggedOnDlcd").val();
+
+                    var dataToSend = { ContractCmit: cmit, PmWarn: warn, PmPmil: mileage, LoggedOnDlcd: dlcd };
+
+                    $.get(UrlMaintClaim + "/GetMaintParts", dataToSend, function (returnData) {
+                        //  $scope.phones = returnData;
+                        $scope.enabledParts = returnData[0];
+                        $scope.disabledParts = returnData[1];
+                        $scope.loading = false;
+                        $scope.availablePartsShow = $scope.enabledParts.length > 0;
+                        $scope.ineligiblePartsShow = $scope.disabledParts.length > 0;
+                        $scope.selectedPartsShow = false;
+                        $scope.$apply();
+                    });
+                } else {
+                    $scope.error = EditReturnData;
+                    $scope.loading = false;
+                    $scope.$apply();
+                }
+            });
+        }
+    }
+
+    $scope.enabledClick = function (checkPart) {
+       
+        $scope.enabledParts.splice(checkPart);
+        $scope.selectedParts.push(checkPart);
+        $scope.selectedPartsShow = true;
+        $scope.availablePartsShow = $scope.enabledParts.length > 0;
+    }
+
+    $scope.selectedClick = function (unCheckPart) {
+        $scope.selectedParts.splice(unCheckPart);
+        $scope.enabledParts.push(unCheckPart);
+        $scope.selectedPartsShow = $scope.selectedParts.length > 0;
+        $scope.availablePartsShow = true;
+    }
+
+    $scope.maintClaimSubmit = function () {
+       
+        var mileage = $("#inputMileage").val();
+        var ro = $("#inputRo").val();
+        var roTotal = $("#inputRoTotal").val();
+
+
+        if (mileage == "" || ro == "" || roTotal == "") {
+            $scope.error = "Please fill all fields";
+        }
+        else if ($scope.selectedParts.length == 0 && $scope.enabledParts.length > 0){
+            $scope.error = "";
+            $scope.selectError = "Please select at least one available item.";
+        }else{
+            $scope.error = "";
+
+            var loggedOnDlcd = $("#hiddenLoggedOnDlcd").val();
+            var loggedOnCmit = $("#hiddenLoggedOnCmit").val();
+            var contractCmit = $("#hiddenWnCmit").val();
+            var contractDlcd = $("#hiddenWnDlcd").val();
+            var warn = $("#hiddenWnWarn").val();
+            var user = $("#hiddenUserId").val();
+            var selectedPartsToSend = [];
+
+           
+
+                $scope.selectedParts[0].LoggedOnDlcd = loggedOnDlcd;
+                $scope.selectedParts[0].ContractDlcd = contractDlcd;
+                $scope.selectedParts[0].LoggedOnCmit = loggedOnCmit;
+                $scope.selectedParts[0].ContractCmit = contractCmit;
+                $scope.selectedParts[0].PmWarn = warn;
+                $scope.selectedParts[0].PmPmil = mileage;
+                $scope.selectedParts[0].PmRonu = ro;
+                $scope.selectedParts[0].PmRoto = roTotal;
+                $scope.selectedParts[0].UserId = user;
+
+
+            
+
+
+            jQuery.ajaxSettings.traditional = true;
+        
+            //Ajax call to Submit selected parts
+             $.ajax({
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            type: 'POST',
+            url: UrlMaintClaim + '/MaintClaimSubmit',
+            data: angular.toJson($scope.selectedParts),
+            success: function (returnData) {
+                alert(returnData);
+            }
+            });
+        }
+    }
+});
+
+maintClaimControllers.controller('maintClaimSearchCtrl', function ($scope, $http) {
+
+
+    $scope.maintClaimSearch = function () {
+
+        $scope.loading = true;
+        var search = $("#inputSearchField").val();
+        
+        if ($scope.selectedSearch == undefined || search == "") {
+            $scope.error = "Please fill all fields.";
+            $scope.loading = false;
+
+        } else if ($scope.selectedSearch == 'warranty') {
+            searchBy = 'w';
+        } else {
+            searchBy = 'v';
+        };
+
+        var dataToSend = { search: search, searchBy: searchBy};
+
+        $.get(UrlMaintClaim + '/Search', dataToSend, function (returnData) {
+
+            if (returnData.length == 0) {
+                $scope.error = "No records found, Please try again.";
+            } else {
+                $scope.error = "";
+                $scope.warrantys = returnData;
+            }
+            $scope.loading = false;
+            $scope.$apply();
+        })
+    }//End of maintClaimSearch
+
+        $scope.maintClaimSelect = function () {
+
+            $("#hiddenWnCmit").val(this.warranty.WnCmit);
+            $("#hiddenWnWarn").val(this.warranty.WnWarn);
+            $("#hiddenWnDlcd").val(this.warranty.WnDlcd);
+
+            $scope.changeRoute = function (url, forceReload) {
+                $scope = $scope || angular.element(document).scope();
+                if (forceReload || $scope.$$phase) { // that's right TWO dollar signs: $$phase
+                    window.location = url;
+                } else {
+                    $location.path(url);
+                    $scope.$apply();
+                }
+            };
+
+            $scope.changeRoute('#/MaintClaim');
+        }
+    
+});
+
+function MaintClaimPartModel(desc, code, isChecked, isCovered) {
+    var part = {
+        part_desc: desc,
+        part_code: code,
+        is_checked: isChecked,
+        is_covered: isCovered
+    };
+    return part;
+}
